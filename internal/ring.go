@@ -5,11 +5,13 @@ import "math"
 const (
 	// WindowN is the size of the rolling window for values and diffs
 	// This determines how much history we keep for statistical analysis
-	WindowN = 50
-	
+	// Increased to 150 for maximum statistical accuracy and pattern detection
+	WindowN = 150
+
 	// HitM is the size of the hit-rate history
 	// This determines how many recent predictions we use to calculate hit rate
-	HitM = 20
+	// Increased to 40 for more stable and reliable hit rate calculation
+	HitM = 40
 )
 
 // Ring is a fixed-size ring buffer for int64 values.
@@ -18,10 +20,10 @@ const (
 type Ring struct {
 	// buf is the underlying fixed-size array storing the values
 	buf [WindowN]int64
-	
+
 	// count tracks how many values have been added (up to WindowN)
 	count int
-	
+
 	// idx is the position where the next value will be written
 	idx int
 }
@@ -31,10 +33,10 @@ type Ring struct {
 func (r *Ring) Push(x int64) {
 	// Write the value at the current index position
 	r.buf[r.idx] = x
-	
+
 	// Move to the next position, wrapping around if necessary
 	r.idx = (r.idx + 1) % WindowN
-	
+
 	// Increment count until we reach capacity
 	if r.count < WindowN {
 		r.count++
@@ -52,23 +54,23 @@ func (r *Ring) Count() int { return r.count }
 func (r *Ring) ToSlice(dst []int64) []int64 {
 	// Resize the destination slice to match the number of stored values
 	dst = dst[:r.count]
-	
+
 	if r.count == 0 {
 		return dst
 	}
-	
+
 	// Calculate the starting position (oldest value)
 	// This is where we started overwriting, or 0 if not yet full
 	start := r.idx - r.count
 	for start < 0 {
 		start += WindowN // Handle negative wrap-around
 	}
-	
+
 	// Copy values in chronological order
 	for i := 0; i < r.count; i++ {
 		dst[i] = r.buf[(start+i)%WindowN]
 	}
-	
+
 	return dst
 }
 
@@ -78,10 +80,10 @@ func (r *Ring) ToSlice(dst []int64) []int64 {
 type DiffRing struct {
 	// buf is the underlying fixed-size array storing the diff values
 	buf [WindowN]int64
-	
+
 	// count tracks how many diffs have been added (up to WindowN)
 	count int
-	
+
 	// idx is the position where the next diff will be written
 	idx int
 }
@@ -91,10 +93,10 @@ type DiffRing struct {
 func (d *DiffRing) Push(x int64) {
 	// Write the diff at the current index position
 	d.buf[d.idx] = x
-	
+
 	// Move to the next position, wrapping around if necessary
 	d.idx = (d.idx + 1) % WindowN
-	
+
 	// Increment count until we reach capacity
 	if d.count < WindowN {
 		d.count++
@@ -106,22 +108,22 @@ func (d *DiffRing) Push(x int64) {
 func (d *DiffRing) Values(dst []int64) []int64 {
 	// Resize the destination slice to match the number of stored diffs
 	dst = dst[:d.count]
-	
+
 	if d.count == 0 {
 		return dst
 	}
-	
+
 	// Calculate the starting position (oldest diff)
 	start := d.idx - d.count
 	for start < 0 {
 		start += WindowN // Handle negative wrap-around
 	}
-	
+
 	// Copy diffs in chronological order
 	for i := 0; i < d.count; i++ {
 		dst[i] = d.buf[(start+i)%WindowN]
 	}
-	
+
 	return dst
 }
 
@@ -131,13 +133,13 @@ func (d *DiffRing) Values(dst []int64) []int64 {
 type HitRing struct {
 	// buf is the underlying fixed-size array storing hit/miss indicators
 	buf [HitM]int
-	
+
 	// count tracks how many outcomes have been recorded (up to HitM)
 	count int
-	
+
 	// idx is the position where the next outcome will be written
 	idx int
-	
+
 	// sum is the running total of hits, used to efficiently calculate hit rate
 	sum int
 }
@@ -153,12 +155,12 @@ func (h *HitRing) Push(hit int) {
 		h.count++
 		return
 	}
-	
+
 	// Buffer is full, replace the oldest value
 	old := h.buf[h.idx]
-	h.sum -= old        // Remove old value from sum
-	h.buf[h.idx] = hit  // Write new value
-	h.sum += hit        // Add new value to sum
+	h.sum -= old       // Remove old value from sum
+	h.buf[h.idx] = hit // Write new value
+	h.sum += hit       // Add new value to sum
 	h.idx = (h.idx + 1) % HitM
 }
 

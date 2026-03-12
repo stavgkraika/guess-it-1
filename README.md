@@ -35,6 +35,14 @@ go build -o guess-it-1 ./cmd
 
 ## Usage
 
+### Run without building
+
+```bash
+go run ./cmd < input.txt > output.txt
+```
+
+### Run with build
+
 ```bash
 ./guess-it-1 < input.txt > output.txt
 ```
